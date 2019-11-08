@@ -7,6 +7,7 @@
  *  Contact: gomeniuk.aa@gmail.com
  */
 
+#pragma once
 #include <cstddef>
 #include <algorithm>
 #include <functional>
@@ -22,7 +23,7 @@ namespace SegmentTree {
 	public:
 		SegmentTree(const std::vector<T>& data, std::function<T(T, T)> functor, T neutral_element) :
 			_tree(4 * data.size(), neutral_element),
-			_assignments(4 * data.size(), false),
+			_inconsistency(4 * data.size(), false),
 			_functor(functor),
 			_neutral_element(neutral_element),
 			_verbose(false),
@@ -34,8 +35,8 @@ namespace SegmentTree {
 		~SegmentTree() {}
 
 		T get(int ql, int qr);
-		T update(int pos, T val);
-		T update(int ql, int qr, T val);
+		T assign(int pos, T val);
+		T assign(int ql, int qr, T val);
 
 		void print();
 		void print(std::wostream& os);
@@ -43,16 +44,16 @@ namespace SegmentTree {
 
 		std::wostream& verbosity_wostream;
 
-	private:
+	protected:
 		void print(std::wostream& os, int i, int l, int r, std::vector<std::pair<int, bool>> margins);
 		void build(const std::vector<T>& data, int i, int l, int r);
-		void push(int i);
+		void push(int i, int l, int r);
 		T get(int i, int l, int r, int ql, int qr);
-		T update(int i, int l, int r, int pos, T val);
-		T update(int i, int l, int r, int ql, int qr, T val);
+		T assign(int i, int l, int r, int pos, T val);
+		T assign(int i, int l, int r, int ql, int qr, T val);
 
 		std::vector<T> _tree;
-		std::vector<bool> _assignments;
+		std::vector<bool> _inconsistency;
 		std::function<T(T, T)> _functor;
 		T _neutral_element;
 		bool _verbose;
@@ -125,8 +126,8 @@ namespace SegmentTree {
 	}
 
 	template<typename T>
-	inline T SegmentTree<T>::update(int pos, T val) {
-		auto res = update(0, 0, _tree.size() / 4, pos, val);
+	inline T SegmentTree<T>::assign(int pos, T val) {
+		auto res = assign(0, 0, _tree.size() / 4, pos, val);
 		if (_verbose) {
 			verbosity_wostream << L"Update " << pos << L' ' << val << std::endl;
 			print();
@@ -136,8 +137,8 @@ namespace SegmentTree {
 	}
 
 	template<typename T>
-	inline T SegmentTree<T>::update(int ql, int qr, T val) {
-		auto res = update(0, 0, _tree.size() / 4, ql, qr, val);
+	inline T SegmentTree<T>::assign(int ql, int qr, T val) {
+		auto res = assign(0, 0, _tree.size() / 4, ql, qr, val);
 		if (_verbose) {
 			verbosity_wostream << L"Update [" << ql << L',' << qr << L"): " << val << std::endl;
 			print(verbosity_wostream);
@@ -147,11 +148,16 @@ namespace SegmentTree {
 	}
 
 	template<typename T>
-	inline void SegmentTree<T>::push(int i) {
-		if (_assignments[i]) {
+	inline void SegmentTree<T>::push(int i, int l, int r) {
+		if (r - l <= 1)
+			return;
+		if (_inconsistency[i]) {
 			_tree[2 * i + 1] = _tree[2 * i + 2] = _tree[i];
-			_assignments[2 * i + 1] = _assignments[2 * i + 2] = true;
-			_assignments[i] = false;
+			_inconsistency[2 * i + 1] = _inconsistency[2 * i + 2] = true;
+			_inconsistency[i] = false;
+			push(2 * i + 1, l, (l + r) / 2);
+			push(2 * i + 2, (l + r) / 2, r);
+			_tree[i] = _functor(_tree[2 * i + 1], _tree[2 * i + 2]);
 		}
 	}
 
@@ -175,39 +181,51 @@ namespace SegmentTree {
 		if (r <= ql || l >= qr)
 			return _neutral_element;
 
-		if (ql <= l && qr >= r)
+		if (ql <= l && qr >= r) {
+			if (_inconsistency[i] && r - l > 1)
+				push(i, l, r);
 			return _tree[i];
+		}
 
-		push(i);
+		push(i, l, r);
 		int m = (l + r) / 2;
 		return _functor(get(2 * i + 1, l, m, ql, qr), get(2 * i + 2, m, r, ql, qr));
 	}
 
 	template<typename T>
-	inline T SegmentTree<T>::update(int i, int l, int r, int pos, T val) {
-		if (pos < l || pos >= r)
+	inline T SegmentTree<T>::assign(int i, int l, int r, int pos, T val) {
+		if (pos < l || pos >= r) {
+			if (_inconsistency[i] && r - l > 1)
+				push(i, l, r);
 			return _tree[i];
+		}
 
 		if (r - l == 1 && pos == l)
 			return _tree[i] = val;
 
-		push(i);
+		push(i, l, r);
 		int m = (l + r) / 2;
-		return _tree[i] = _functor(update(2 * i + 1, l, m, pos, val), update(2 * i + 2, m, r, pos, val));
+		return _tree[i] = _functor(assign(2 * i + 1, l, m, pos, val), assign(2 * i + 2, m, r, pos, val));
 	}
 
 	template<typename T>
-	inline T SegmentTree<T>::update(int i, int l, int r, int ql, int qr, T val) {
-		if (r <= ql || l >= qr)
+	inline T SegmentTree<T>::assign(int i, int l, int r, int ql, int qr, T val) {
+		if (r <= ql || l >= qr) {
+			if (_inconsistency[i] && r - l > 1)
+				push(i, l, r);
 			return _tree[i];
-
-		if (ql <= l && qr >= r) {
-			_assignments[i] = true;
-			return _tree[i] = val;
 		}
 
-		push(i);
+		if (ql <= l && qr >= r) {
+			_inconsistency[i] = true;
+			_tree[i] = val;
+			if (r - l > 1)
+				push(i, l, r);
+			return _tree[i];
+		}
+
+		push(i, l, r);
 		int m = (l + r) / 2;
-		return _tree[i] = _functor(update(2 * i + 1, l, m, ql, qr, val), update(2 * i + 2, m, r, ql, qr, val));
+		return _tree[i] = _functor(assign(2 * i + 1, l, m, ql, qr, val), assign(2 * i + 2, m, r, ql, qr, val));
 	}
 }
