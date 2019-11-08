@@ -39,5 +39,11 @@
     <None Include="rvq.in">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="sum.in">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="sum.out">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

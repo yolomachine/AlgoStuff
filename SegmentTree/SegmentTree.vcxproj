@@ -127,6 +127,8 @@
   <ItemGroup>
     <None Include="rvq.in" />
     <None Include="rvq.out" />
+    <None Include="sum.in" />
+    <None Include="sum.out" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

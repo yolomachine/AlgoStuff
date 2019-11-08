@@ -1,10 +1,20 @@
-﻿#include <fstream>
+﻿/**
+ *  @file SegmentTree.hpp
+ *  
+ *  @brief Segment tree implementation
+ *  
+ *  @author Alexander Gomeniuk
+ *  Contact: gomeniuk.aa@gmail.com
+ */
+
 #include <cstddef>
 #include <algorithm>
 #include <functional>
 #include <vector>
 #include <iostream>
 #include <string>
+#include <io.h>
+#include <fcntl.h>
 
 namespace SegmentTree {
 	template <typename T>
@@ -14,7 +24,10 @@ namespace SegmentTree {
 			_tree(4 * data.size(), neutral_element),
 			_assignments(4 * data.size(), false),
 			_functor(functor),
-			_neutral_element(neutral_element) {
+			_neutral_element(neutral_element),
+			_verbose(false),
+			_mode(_O_U16TEXT),
+			verbosity_wostream(std::wcout) {
 			build(data, 0, 0, data.size());
 		}
 
@@ -24,7 +37,11 @@ namespace SegmentTree {
 		T update(int pos, T val);
 		T update(int ql, int qr, T val);
 
+		void print();
 		void print(std::wostream& os);
+		void verbose(bool val);
+
+		std::wostream& verbosity_wostream;
 
 	private:
 		void print(std::wostream& os, int i, int l, int r, std::vector<std::pair<int, bool>> margins);
@@ -38,7 +55,22 @@ namespace SegmentTree {
 		std::vector<bool> _assignments;
 		std::function<T(T, T)> _functor;
 		T _neutral_element;
+		bool _verbose;
+		int _mode;
 	};
+
+	template<typename T>
+	inline void SegmentTree<T>::verbose(bool val) {
+		if (_verbose != val) {
+			_verbose = val;
+			_mode = _setmode(_fileno(stdout), _mode);
+		}
+	}
+
+	template<typename T>
+	inline void SegmentTree<T>::print() {
+		print(verbosity_wostream);
+	}
 
 	template<typename T>
 	inline void SegmentTree<T>::print(std::wostream& os) {
@@ -82,17 +114,35 @@ namespace SegmentTree {
 	inline T SegmentTree<T>::get(int ql, int qr) {
 		if (ql > qr)
 			std::swap(ql, qr);
-		return get(0, 0, _tree.size() / 4, ql, qr);
+		auto res = get(0, 0, _tree.size() / 4, ql, qr);
+		if (_verbose) {
+			verbosity_wostream << ql << L' ' << qr << L" Get: " << res << std::endl;
+			print();
+			verbosity_wostream << std::endl << std::endl;
+		}
+		return res;
 	}
 
 	template<typename T>
 	inline T SegmentTree<T>::update(int pos, T val) {
-		return update(0, 0, _tree.size() / 4, pos, val);
+		auto res = update(0, 0, _tree.size() / 4, pos, val);
+		if (_verbose) {
+			verbosity_wostream << pos << L' ' << val << L" Update" << std::endl;
+			print();
+			verbosity_wostream << std::endl;
+		}
+		return res;
 	}
 
 	template<typename T>
 	inline T SegmentTree<T>::update(int ql, int qr, T val) {
-		return update(0, 0, _tree.size() / 4, ql, qr, val);
+		auto res = update(0, 0, _tree.size() / 4, ql, qr, val);
+		if (_verbose) {
+			verbosity_wostream << ql << L' ' << qr << L' ' << val << L" Update" << std::endl;
+			print(verbosity_wostream);
+			verbosity_wostream << std::endl;
+		}
+		return res;
 	}
 
 	template<typename T>
