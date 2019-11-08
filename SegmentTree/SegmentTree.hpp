@@ -96,16 +96,17 @@ namespace SegmentTree {
 			for (auto k = 0; k < (margins[j].first - margins[j].second) - 1; ++k)
 				os << L" ";
 		};
-		os << ((r - l == 1 || i % 2 == 0) ? L'└' : L'├') << L'─' << std::to_wstring(_tree[i]) << std::endl;
+		auto range = L'[' + std::to_wstring(l) + L',' + std::to_wstring(r) + L"): ";
+		os << ((r - l == 1 || i % 2 == 0) ? L'└' : L'├') << L'─' << range << std::to_wstring(_tree[i]) << std::endl;
 
 		if (r - l == 1)
 			return;
 
 		int m = (l + r) / 2;
-		margins.push_back({ std::to_string(_tree[i]).length() + 2, (r - l) != 1 });
+		margins.push_back({ std::to_string(_tree[i]).length() + 2 + range.length(), (r - l) != 1 });
 		print(os, 2 * i + 1, l, m, margins);
 		margins.pop_back();
-		margins.push_back({ std::to_string(_tree[i]).length() + 2, (r - l) != 1 });
+		margins.push_back({ std::to_string(_tree[i]).length() + 2 + range.length(), (r - l) != 1 });
 		print(os, 2 * i + 2, m, r, margins);
 		margins.pop_back();
 	}
@@ -116,7 +117,7 @@ namespace SegmentTree {
 			std::swap(ql, qr);
 		auto res = get(0, 0, _tree.size() / 4, ql, qr);
 		if (_verbose) {
-			verbosity_wostream << ql << L' ' << qr << L" Get: " << res << std::endl;
+			verbosity_wostream << L"Get: [" << ql << L',' << qr << L"): " << res << std::endl;
 			print();
 			verbosity_wostream << std::endl << std::endl;
 		}
@@ -127,7 +128,7 @@ namespace SegmentTree {
 	inline T SegmentTree<T>::update(int pos, T val) {
 		auto res = update(0, 0, _tree.size() / 4, pos, val);
 		if (_verbose) {
-			verbosity_wostream << pos << L' ' << val << L" Update" << std::endl;
+			verbosity_wostream << L"Update " << pos << L' ' << val << std::endl;
 			print();
 			verbosity_wostream << std::endl;
 		}
@@ -138,7 +139,7 @@ namespace SegmentTree {
 	inline T SegmentTree<T>::update(int ql, int qr, T val) {
 		auto res = update(0, 0, _tree.size() / 4, ql, qr, val);
 		if (_verbose) {
-			verbosity_wostream << ql << L' ' << qr << L' ' << val << L" Update" << std::endl;
+			verbosity_wostream << L"Update [" << ql << L',' << qr << L"): " << val << std::endl;
 			print(verbosity_wostream);
 			verbosity_wostream << std::endl;
 		}
@@ -174,9 +175,8 @@ namespace SegmentTree {
 		if (r <= ql || l >= qr)
 			return _neutral_element;
 
-		if (ql <= l && qr >= r) {
+		if (ql <= l && qr >= r)
 			return _tree[i];
-		}
 
 		push(i);
 		int m = (l + r) / 2;
